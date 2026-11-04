@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -261,6 +260,10 @@ export default function PlanerPage() {
     return (
         <div className="planner-page">
             <header className="planner-topbar">
+                <div className="brand">
+                    <span className="brand-mark" />
+                    Planner
+                </div>
                 <div className="topbar-actions">
                     <div className="delete-buttons-row">
                         {showTransformButton && (
@@ -380,13 +383,8 @@ export default function PlanerPage() {
                         </div>
 
                         {days.map((day) => (
-                            <div className={addingType === "task"
-                                                    ? "hour-cell-task-active"
-                                                    : addingType === "event"
-                                                        ? "hour-cell-event-active"
-                                                        : "day-column"
-                                            } key={day}>
-                                <div className="day-header">
+                            <div className="day-column" key={day}>
+                                <div className={`day-header ${days.indexOf(day) === getDayOfWeek(new Date()) ? "is-today" : ""}`}>
                                     <span className="day-date">{
                                     getDateForDay(startOfWeek, days.indexOf(day))}</span>
                                     <span>{day}</span>  
@@ -736,4 +734,4 @@ export default function PlanerPage() {
             )}
         </div>
     );
-}
+}   
