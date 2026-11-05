@@ -575,7 +575,21 @@ button {
     border-color: var(--danger);
     box-shadow: 0 0 0 3px var(--danger-soft), 0 0 20px rgba(255, 107, 134, 0.3);
 }
+/* Today's column */
+.day-column:has(.day-header.is-today) {
+    border-left-color: rgba(139, 124, 255, 0.4);
+    background: rgba(139, 124, 255, 0.04);
+}
 
+/* the column after it shares that line, so color its left border too */
+.day-column:has(.day-header.is-today) + .day-column {
+    border-left-color: rgba(139, 124, 255, 0.4);
+}
+
+/* Sunday has no next column, so give it a right edge */
+.day-column:last-child:has(.day-header.is-today) {
+    border-right: 1px solid rgba(139, 124, 255, 0.4);
+}
 /* Items on the grid */
 
 .delete-select-block,

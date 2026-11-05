@@ -1,15 +1,5 @@
-import Image from "next/image";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <>
-    <main>
-      <h1>Your weekly planner</h1>
-      <p>Plan everything in one place</p>
-    </main>
-    <div className="dugme">
-      <p>Start planning your week!</p>
-    </div>
-    </>
-  );
+    redirect("/login");
 }

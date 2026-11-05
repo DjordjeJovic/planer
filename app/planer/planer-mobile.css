@@ -1,0 +1,619 @@
+/* ==========================================================================
+   Mobile layout for the planner. Loaded AFTER planer.css.
+   Everything inside the media query is sized in rem, and the root font size
+   scales with the screen width, so text, padding, buttons and panels all shrink
+   together on smaller phones.
+   ========================================================================== */
+
+/* New elements are hidden on desktop */
+.fab-button,
+.edge-tabs,
+.drawer-close,
+.hour-short {
+    display: none;
+}
+
+@media (max-width: 700px) {
+    /* ---- Fluid scale: 1rem is about 14px on a 390px-wide phone ---- */
+
+    html {
+        font-size: clamp(10px, 3.6vw, 16px);
+    }
+
+    :root {
+        --pad: 0.6rem;
+        --time-col: 3rem;
+        --day-col: calc((100vw - 2 * var(--pad) - var(--time-col)) / 2); /* two days visible */
+        --hour-height: 4.4rem;
+    }
+
+    /* ---- Page: fixed to the screen, calendar fills the space, bar at the bottom ---- */
+
+    .planner-page {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        padding: var(--pad) var(--pad) 0;
+        gap: 0.5rem;
+        overflow: hidden;
+    }
+
+    .planner-layout {
+        position: relative;
+        display: block;
+        flex: 1;
+        min-height: 0;
+        height: auto;
+        overflow: hidden;
+    }
+
+    .planner-scroll {
+        position: absolute;
+        inset: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+        scroll-padding-left: var(--time-col);
+    }
+
+    .planner-table-wrapper {
+        flex: none;
+        min-height: 0;
+        overflow: visible;
+    }
+
+    .schedule {
+        width: max-content;
+        height: max-content;
+        min-height: 0;
+        grid-template-columns: var(--time-col) repeat(7, var(--day-col));
+    }
+
+    .time-column {
+        position: sticky;
+        left: 0;
+        z-index: 12;
+        background: var(--bg);
+    }
+
+    .day-column {
+        scroll-snap-align: start;
+    }
+
+    /* ---- Calendar sizes ---- */
+
+    .day-header {
+        flex-basis: 3.3rem;
+        height: 3.3rem;
+        gap: 0.1rem;
+        z-index: 10;
+    }
+
+    .day-header > span:last-child {
+        font-size: 0.95rem;
+    }
+
+    .day-date {
+        font-size: 0.75rem;
+    }
+
+    .time-header {
+        font-size: 0.65rem;
+    }
+
+    .hour-label {
+        padding-right: 0.55rem;
+        font-size: 0.7rem;
+    }
+
+    /* short labels ("1 AM") so they fit in the narrow time column */
+    .hour-full {
+        display: none;
+    }
+
+    .hour-short {
+        display: inline;
+    }
+
+    .time-column .hour-label:nth-child(2) {
+        top: 0.4rem;
+    }
+
+    .task-block,
+    .event-block {
+        left: 0.25rem;
+        right: 0.25rem;
+        min-height: 1.4rem;
+        padding: 0.4rem 0.5rem;
+        gap: 0.15rem;
+        border-radius: 0.6rem;
+    }
+
+    .item-name {
+        font-size: 0.8rem;
+    }
+
+    .item-time {
+        font-size: 0.66rem;
+    }
+
+    /* bigger touch target for resizing, but never bigger than half the block */
+    .resize-handle {
+        height: min(1.8rem, 50%);
+    }
+
+    /* little hints, because there is no hover on touch screens */
+    .planner-layout::after {
+        position: absolute;
+        left: 50%;
+        bottom: 0.7rem;
+        z-index: 20;
+        transform: translateX(-50%);
+        padding: 0.5rem 0.9rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        white-space: nowrap;
+        pointer-events: none;
+        backdrop-filter: blur(10px);
+    }
+
+    .planner-page:has(.hour-cell-task-active) .planner-layout::after {
+        content: "Tap a time slot to add a task";
+        border: 1px solid var(--accent-line);
+        background: rgba(139, 124, 255, 0.28);
+        color: #e4e0ff;
+    }
+
+    .planner-page:has(.hour-cell-event-active) .planner-layout::after {
+        content: "Tap a time slot to add an event";
+        border: 1px solid var(--amber-line);
+        background: rgba(255, 176, 103, 0.26);
+        color: #ffe6cc;
+    }
+
+    .planner-page:has(.top-delete-wrapper.delete-active) .planner-layout::after {
+        content: "Tap items to select, then tap the trash";
+        border: 1px solid var(--danger-line);
+        background: rgba(255, 107, 134, 0.22);
+        color: #ffd0d8;
+    }
+
+    /* ---- Bottom bar (the old top bar) ---- */
+
+    .planner-topbar {
+        order: 2;
+        position: relative;
+        top: auto;
+        z-index: 40;
+        flex: 0 0 auto;
+        min-height: 0;
+        width: auto;
+        margin: 0 calc(var(--pad) * -1);
+        padding: 0.6rem 0.8rem calc(0.6rem + env(safe-area-inset-bottom));
+        border-width: 1px 0 0;
+        border-radius: 1.3rem 1.3rem 0 0;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .brand {
+        display: none;
+    }
+
+    .topbar-actions {
+        width: 100%;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    /* delete button (keeps its morph animation, just in rem) */
+    .top-delete-wrapper {
+        flex: 0 0 5.4rem;
+        width: 5.4rem;
+        height: 2.5rem;
+    }
+
+    .top-delete-wrapper.delete-active {
+        flex-basis: 2.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .top-delete-wrapper.delete-active,
+    .top-delete-wrapper:not(.delete-active) {
+        animation: none;
+    }
+
+    .transform-button {
+        flex: 0 0 2.5rem;
+        width: 2.5rem;
+        min-width: 2.5rem;
+        height: 2.5rem;
+    }
+
+    .top-delete-button .delete-label {
+        font-size: 0.8rem;
+    }
+
+    .top-delete-button .delete-x,
+    .transform-button .delete-x {
+        font-size: 1.3rem;
+    }
+
+    /* week selector */
+    .week-controls {
+        padding-left: 0.4rem;
+    }
+
+    .week-paragraph {
+        display: none;
+    }
+
+    .week-button {
+        min-height: 2.5rem;
+        padding: 0 0.55rem;
+        font-size: 0.8rem;
+    }
+
+    .plus-button {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1.25rem;
+    }
+
+    /* the "+" button that opens Add Event / Add Task */
+    .fab-button {
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #0b0a1a;
+        font-size: 1.7rem;
+        font-weight: 500;
+        line-height: 1;
+        box-shadow: 0 8px 24px rgba(139, 124, 255, 0.45);
+        transition: transform 0.2s ease;
+    }
+
+    .planner-page.menu-open .fab-button {
+        transform: rotate(45deg);
+    }
+
+    /* Add Event / Add Task pop up above the "+" */
+    .topbar-actions > .event-button,
+    .topbar-actions > .task-button {
+        display: none;
+    }
+
+    .planner-page.menu-open .topbar-actions > .event-button,
+    .planner-page.menu-open .topbar-actions > .task-button {
+        display: inline-flex;
+        align-items: center;
+        position: absolute;
+        right: 0.9rem;
+        height: 2.8rem;
+        padding: 0 1.2rem;
+        font-size: 0.9rem;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+        animation: fab-pop-in 0.18s ease-out both;
+    }
+
+    .planner-page.menu-open .topbar-actions > .event-button {
+        bottom: calc(100% + 0.7rem);
+        background: linear-gradient(rgba(255, 176, 103, 0.24), rgba(255, 176, 103, 0.24)), var(--surface-2);
+    }
+
+    .planner-page.menu-open .topbar-actions > .task-button {
+        bottom: calc(100% + 3.8rem);
+        background: linear-gradient(rgba(139, 124, 255, 0.26), rgba(139, 124, 255, 0.26)), var(--surface-2);
+    }
+
+    /* While a mode is on, the ✔ takes the place of the button that was tapped
+       (that button hides). The other Add button stays where it is. */
+    .topbar-actions > .cancel-mode-button {
+        display: none;
+    }
+
+    .planner-page:has(.hour-cell-task-active, .hour-cell-event-active) .topbar-actions > .cancel-mode-button {
+        display: grid;
+        place-items: center;
+        position: absolute;
+        right: 0.9rem;
+        width: 2.8rem;
+        height: 2.8rem;
+        padding: 0;
+        font-size: 1.2rem;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+        animation: fab-pop-in 0.18s ease-out both;
+    }
+
+    .planner-page:has(.hour-cell-event-active) .topbar-actions > .cancel-mode-button {
+        bottom: calc(100% + 0.7rem);
+    }
+
+    .planner-page:has(.hour-cell-task-active) .topbar-actions > .cancel-mode-button {
+        bottom: calc(100% + 3.8rem);
+    }
+
+    .planner-page:has(.hour-cell-event-active) .topbar-actions > .event-button,
+    .planner-page:has(.hour-cell-task-active) .topbar-actions > .task-button {
+        display: none;
+    }
+
+    @keyframes fab-pop-in {
+        from { opacity: 0; transform: translateY(8px) scale(0.96); }
+        to { opacity: 1; transform: none; }
+    }
+
+    /* ---- Tabs sticking out of the right edge ---- */
+
+    .edge-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        position: fixed;
+        right: 0;
+        top: 46%;
+        z-index: 30;
+        transform: translateY(-50%);
+    }
+
+    .edge-tab {
+        padding: 1rem 0.55rem;
+        border: 1px solid var(--line-strong);
+        border-right: 0;
+        border-radius: 0.9rem 0 0 0.9rem;
+        writing-mode: vertical-rl;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        box-shadow: -4px 6px 18px rgba(0, 0, 0, 0.35);
+    }
+
+    .edge-tab-notes {
+        border-color: var(--accent-line);
+        background: linear-gradient(rgba(139, 124, 255, 0.22), rgba(139, 124, 255, 0.22)), var(--surface-2);
+        color: #d6d1ff;
+    }
+
+    .edge-tab-upcoming {
+        border-color: var(--amber-line);
+        background: linear-gradient(rgba(255, 176, 103, 0.2), rgba(255, 176, 103, 0.2)), var(--surface-2);
+        color: #ffd9b3;
+    }
+
+    /* ---- Side panels become full-screen drawers sliding in from the right ---- */
+
+    .planner-sidebar {
+        display: block;
+    }
+
+    .notes-panel,
+    .down-right-panel {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        margin: 0;
+        padding: calc(0.8rem + env(safe-area-inset-top)) 1rem calc(1rem + env(safe-area-inset-bottom));
+        border: 0;
+        border-radius: 0;
+        transform: translateX(100%);
+        visibility: hidden;
+        transition: transform 0.32s cubic-bezier(0.22, 0.9, 0.3, 1), visibility 0s linear 0.32s;
+    }
+
+    .notes-panel.is-open,
+    .down-right-panel.is-open {
+        transform: none;
+        visibility: visible;
+        transition-delay: 0s, 0s;
+    }
+
+    .drawer-close {
+        display: flex;
+        align-items: center;
+        align-self: flex-start;
+        flex: 0 0 auto;
+        gap: 0.4rem;
+        margin-bottom: 0.9rem;
+        padding: 0.55rem 1rem 0.55rem 0.8rem;
+        border: 1px solid var(--line-strong);
+        border-radius: 999px;
+        background: var(--surface-3);
+        color: var(--text);
+        font-size: 0.9rem;
+    }
+
+    .header-font {
+        margin-bottom: 0.2rem;
+        font-size: 1.7rem;
+    }
+
+    .day-date-notes {
+        font-size: 0.95rem;
+    }
+
+    .upcoming-events-container {
+        margin-top: 0.9rem;
+        padding: 1rem;
+        border-radius: 1rem;
+    }
+
+    .edit-description-container {
+        gap: 0.6rem;
+        padding: 1rem;
+        border-radius: 1rem;
+    }
+
+    .edit-heading .header-font {
+        font-size: 1.5rem;
+    }
+
+    .edit-badge {
+        padding: 0.3rem 0.7rem;
+        font-size: 0.78rem;
+    }
+
+    .edit-item-info {
+        font-size: 0.95rem;
+    }
+
+    .edit-label {
+        font-size: 0.75rem;
+    }
+
+    .edit-input-line,
+    .edit-description-input {
+        padding: 0.75rem 0.9rem;
+        border-radius: 0.8rem;
+        font-size: max(16px, 1rem);
+    }
+
+    .edit-description-input {
+        min-height: 6rem;
+        max-height: 12rem;
+    }
+
+    .form-label-edit input {
+        height: 3rem;
+        padding: 0 0.9rem;
+        border-radius: 0.8rem;
+        font-size: max(16px, 1rem);
+    }
+
+    .edit-actions .edit-button,
+    .edit-actions .edit-cancel-button,
+    .edit-actions .edit-delete-button {
+        padding: 0.7rem 1.1rem;
+        font-size: 0.9rem;
+    }
+
+    /* ---- Add Task / Add Event modal becomes a bottom sheet ---- */
+
+    .modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+
+    .task-modal {
+        max-width: none;
+        padding: 1.5rem 1.3rem calc(1.5rem + env(safe-area-inset-bottom));
+        border-bottom: 0;
+        border-radius: 1.6rem 1.6rem 0 0;
+        animation: sheet-up 0.28s ease-out;
+    }
+
+    .modal-heading {
+        margin-bottom: 1.3rem;
+    }
+
+    .modal-eyebrow {
+        font-size: 0.65rem;
+    }
+
+    .modal-heading h2 {
+        font-size: 1.6rem;
+    }
+
+    .modal-close {
+        width: 2.2rem;
+        height: 2.2rem;
+        font-size: 1.4rem;
+    }
+
+    .form-label {
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        font-size: 0.72rem;
+    }
+
+    .form-label input {
+        height: 3rem;
+        padding: 0 0.9rem;
+        border-radius: 0.8rem;
+        font-size: max(16px, 1rem);
+    }
+
+    .form-row {
+        gap: 0.8rem;
+    }
+
+    .selected-day {
+        padding-top: 0.9rem;
+        font-size: 0.85rem;
+    }
+
+    .modal-actions {
+        gap: 0.6rem;
+        margin-top: 1.2rem;
+    }
+
+    .modal-actions .cancel-mode-button,
+    .modal-actions .event-button,
+    .modal-actions .task-button {
+        min-height: 2.8rem;
+        padding: 0 1.3rem;
+        font-size: 0.9rem;
+    }
+
+    @keyframes sheet-up {
+        from { transform: translateY(100%); }
+        to { transform: none; }
+    }
+
+    /* ---- Delete confirmation: centered instead of dropping under the button ---- */
+
+    .modal-overlay-delete {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        display: grid;
+        place-items: center;
+        width: auto;
+        margin: 0;
+        padding: 1.2rem;
+        background: rgba(3, 4, 9, 0.72);
+    }
+
+    .delete-modal {
+        max-width: 24rem;
+        padding: 1.4rem;
+        border-radius: 1.2rem;
+    }
+
+    .delete-modal-message {
+        margin-bottom: 1.1rem;
+        font-size: 0.95rem;
+    }
+
+    .delete-modal-cancel,
+    .delete-modal-confirm {
+        padding: 0.7rem 1.1rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Touch screens: hover styles would "stick" after a tap, so switch them off */
+@media (hover: none) {
+    .hour-cell:hover,
+    .hour-cell-task-active:hover,
+    .hour-cell-event-active:hover {
+        background-color: transparent;
+        box-shadow: none;
+    }
+
+    .hour-cell-task-active:hover::after,
+    .hour-cell-event-active:hover::after {
+        display: none;
+    }
+}

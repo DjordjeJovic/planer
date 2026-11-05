@@ -1,0 +1,217 @@
+/* ==========================================================================
+   Notes panel, iPhone Notes style.
+   List of notes -> tap one (or tap the empty page) -> full-page editor
+   -> ✔ saves and closes, 🗑 deletes.
+   Load this after planer.css and planer-mobile.css.
+   ========================================================================== */
+
+/* ---- List view ---- */
+
+.notes-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.notes-new {
+    flex: 0 0 auto;
+    padding: 7px 13px;
+    border: 1px solid var(--accent-line);
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: #d6d1ff;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.notes-new:hover {
+    background: rgba(139, 124, 255, 0.28);
+    transform: translateY(-1px);
+}
+
+.notes-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 12px 0 0;
+    padding: 4px 2px 40px;
+    overflow-y: auto;
+    border-top: 1px solid var(--line);
+    cursor: text;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+.notes-empty {
+    margin: auto;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.note-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.note-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.note-title {
+    overflow: hidden;
+    color: var(--text);
+    font-family: Inter, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note-preview {
+    overflow: hidden;
+    color: var(--muted);
+    font-family: Inter, sans-serif;
+    font-size: 12.5px;
+    line-height: 1.4;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---- Editor view: one note, full page ---- */
+
+.note-editor {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+}
+
+.note-editor-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+}
+
+.note-editor-delete,
+.note-editor-done {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-size: 16px;
+    transition: background 0.15s ease, transform 0.15s ease, filter 0.15s ease;
+}
+
+.note-editor-delete {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.note-editor-delete:hover {
+    background: rgba(255, 107, 134, 0.22);
+}
+
+.note-editor-done {
+    background: var(--accent);
+    color: #0b0a1a;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(139, 124, 255, 0.35);
+}
+
+.note-editor-done:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.note-editor-text {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    margin-top: 12px;
+    padding: 0;
+    border: 0;
+    outline: none;
+    resize: none;
+    overflow-y: auto;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+.note-editor-text::placeholder {
+    color: var(--muted);
+}
+
+/* ---- Phones: same rem scale as planer-mobile.css ---- */
+
+@media (max-width: 700px) {
+    .notes-new {
+        padding: 0.5rem 0.9rem;
+        font-size: 0.85rem;
+    }
+
+    .notes-page {
+        margin-top: 0.9rem;
+        padding-bottom: 3rem;
+    }
+
+    .notes-empty {
+        font-size: 0.95rem;
+    }
+
+    .note-item {
+        padding: 0.8rem 0.8rem;
+    }
+
+    /* 16px minimum so iOS doesn't zoom in when you tap into the text */
+    .note-title {
+        font-size: max(16px, 1rem);
+    }
+
+    .note-preview {
+        font-size: 0.9rem;
+    }
+
+    .note-editor {
+        margin-top: 0.9rem;
+    }
+
+    .note-editor-bar {
+        padding-bottom: 0.7rem;
+    }
+
+    .note-editor-delete,
+    .note-editor-done {
+        width: 2.6rem;
+        height: 2.6rem;
+        font-size: 1.1rem;
+    }
+
+    .note-editor-text {
+        margin-top: 0.9rem;
+        font-size: max(16px, 1rem);
+    }
+}
