@@ -215,6 +215,22 @@ button {
     color: var(--text);
 }
 
+/* "Don't have an account? Sign up" link under the form (inline, not absolute) */
+.login-switch {
+    display: inline;
+    padding: 0;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: 600;
+    transition: filter 0.15s ease;
+}
+
+.login-switch:hover {
+    filter: brightness(1.2);
+    text-decoration: underline;
+}
+
 .login-error {
     margin: -2px 0 16px;
     padding: 10px 12px;

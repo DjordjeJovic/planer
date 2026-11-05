@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -164,7 +163,7 @@ export default function LoginPage() {
 
                     <button
                         type="button"
-                        className="login-toggle"
+                        className="login-switch"
                         onClick={() => {
                             setIsSignUp(!isSignUp);
                             setError("");
