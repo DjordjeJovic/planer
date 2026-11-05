@@ -1415,6 +1415,25 @@ button {
     gap: 10px;
     margin-top: 20px;
 }
+/* Lights up whatever is happening right now, once, when the site opens */
+.task-block.item-now,
+.event-block.item-now {
+    animation: item-now-pulse 1.8s ease-out both;
+}
+
+.task-block.item-now {
+    --pulse: 139, 124, 255;
+}
+
+.event-block.item-now {
+    --pulse: 255, 176, 103;
+}
+
+@keyframes item-now-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(var(--pulse), 0.7); filter: brightness(1); }
+    25%  { box-shadow: 0 0 0 6px rgba(var(--pulse), 0.35), 0 0 28px rgba(var(--pulse), 0.8); filter: brightness(1.45); }
+    100% { box-shadow: 0 0 0 0 rgba(var(--pulse), 0); filter: brightness(1); }
+}
 
 /* Smaller laptops */
 

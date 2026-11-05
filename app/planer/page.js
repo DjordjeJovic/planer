@@ -245,6 +245,44 @@ export default function PlanerPage() {
         return () => phone.removeEventListener("change", scrollToToday);
     }, []);
 
+    // When the site opens, whatever is happening right now lights up briefly.
+    const [nowPulseIds, setNowPulseIds] = useState([]);
+    const pulsedOnce = useRef(false);
+
+    useEffect(() => {
+        if (dataLoading || pulsedOnce.current) {
+            return;
+        }
+
+        pulsedOnce.current = true;
+
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const today = days[getDayOfWeek(now)];
+
+        const happeningNow = [...tasks, ...events]
+            .filter(
+                (item) =>
+                    item.day === today &&
+                    timeToMinutes(item.start) <= nowMinutes &&
+                    nowMinutes < timeToMinutes(item.end)
+            )
+            .map((item) => item.id);
+
+        if (happeningNow.length === 0) {
+            return;
+        }
+
+        // small delay so the pulse starts after the page has scrolled into place
+        const start = setTimeout(() => setNowPulseIds(happeningNow), 400);
+        const stop = setTimeout(() => setNowPulseIds([]), 400 + 1800);
+
+        return () => {
+            clearTimeout(start);
+            clearTimeout(stop);
+        };
+    }, [dataLoading, tasks, events]);
+
     function closeModal() {
         setAddingType(null);
         setSelectedCell(null);
@@ -820,7 +858,7 @@ async function deleteItems() {
                                                 deleteSelect && forDelete.includes(item.id)
                                                     ? "item-selected"
                                                     : ""
-                                            }`}
+                                            } ${nowPulseIds.includes(item.id) ? "item-now" : ""}`}
                                                 
                                                 style={getItemStyle(item)}
                                             >
