@@ -235,7 +235,8 @@ export default function PlanerPage() {
 
             // two days are visible, so Sunday can't be the first visible column
             box.scrollLeft = Math.min(getDayOfWeek(today), 5) * dayWidth;
-            box.scrollTop = Math.max(0, today.getHours() - 1) * hourHeight;
+            // current hour sits right under the day headers
+            box.scrollTop = today.getHours() * hourHeight;
         }
 
         scrollToToday();
