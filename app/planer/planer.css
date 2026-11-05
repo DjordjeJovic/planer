@@ -252,21 +252,39 @@ button {
 
 /* Top bar: show which mode is on, and make the ✔ the obvious way out */
 
-.planner-page:has(.hour-cell-task-active) .topbar-actions > .task-button {
-    border-color: var(--accent);
-    background: rgba(139, 124, 255, 0.36);
-    color: #fff;
-    box-shadow: 0 0 0 3px var(--accent-soft), 0 0 22px rgba(139, 124, 255, 0.35);
+/* Top bar: while a mode is on, the tapped button hides and ✔ takes its place */
+
+/* ✔ is hidden until a mode is active */
+.topbar-actions > .cancel-mode-button {
+    display: none;
 }
 
+/* fixed order so the slots never jump: [Add Event] [Add Task] */
+.topbar-actions > .event-button { order: 1; }
+.topbar-actions > .task-button  { order: 3; }
+.topbar-actions > .cancel-mode-button { order: 2; }
+
+/* Event mode: Add Event hides, ✔ sits in its slot, Add Task stays */
 .planner-page:has(.hour-cell-event-active) .topbar-actions > .event-button {
-    border-color: var(--amber);
-    background: rgba(255, 176, 103, 0.34);
-    color: #fff;
-    box-shadow: 0 0 0 3px var(--amber-soft), 0 0 22px rgba(255, 176, 103, 0.3);
+    display: none;
+}
+.planner-page:has(.hour-cell-event-active) .topbar-actions > .cancel-mode-button {
+    order: 1;
 }
 
+/* Task mode: Add Task hides, ✔ sits in its slot, Add Event stays */
+.planner-page:has(.hour-cell-task-active) .topbar-actions > .task-button {
+    display: none;
+}
+.planner-page:has(.hour-cell-task-active) .topbar-actions > .cancel-mode-button {
+    order: 3;
+}
+
+/* the ✔ itself */
 .planner-page:has(.hour-cell-task-active, .hour-cell-event-active) .topbar-actions > .cancel-mode-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border-color: transparent;
     background: var(--text);
     color: #0b0d14;
