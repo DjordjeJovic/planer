@@ -215,10 +215,10 @@ export default function PlanerPage() {
     useEffect(() => {
         const phone = window.matchMedia("(max-width: 700px)");
 
-        function scrollToToday() {
+        function scrollToNow() {
             const box = scrollRef.current;
 
-            if (!box || !phone.matches) {
+            if (!box) {
                 return;
             }
 
@@ -230,19 +230,25 @@ export default function PlanerPage() {
             }
 
             const today = new Date();
-            const dayWidth = columns[0].getBoundingClientRect().width;
             const hourHeight = cell.getBoundingClientRect().height;
 
-            // two days are visible, so Sunday can't be the first visible column
-            box.scrollLeft = Math.min(getDayOfWeek(today), 5) * dayWidth;
-            // current hour sits right under the day headers
+            // all screens: current hour sits right under the day headers
+            // (late in the day the table can't scroll that far, so it stops at the bottom)
             box.scrollTop = today.getHours() * hourHeight;
+
+            // phones only: also jump sideways to today (two days are visible,
+            // so Sunday can't be the first visible column)
+            if (phone.matches) {
+                const dayWidth = columns[0].getBoundingClientRect().width;
+                box.scrollLeft = Math.min(getDayOfWeek(today), 5) * dayWidth;
+            }
         }
 
-        scrollToToday();
+        scrollToNow();
 
-        phone.addEventListener("change", scrollToToday);
-        return () => phone.removeEventListener("change", scrollToToday);
+        // rotating a phone / toggling device mode re-applies it
+        phone.addEventListener("change", scrollToNow);
+        return () => phone.removeEventListener("change", scrollToNow);
     }, []);
 
     // When the site opens, whatever is happening right now lights up briefly.
