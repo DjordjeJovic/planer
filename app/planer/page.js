@@ -91,9 +91,8 @@ export default function PlanerPage() {
     // which week is on screen (always a Monday)
     const thisMonday = getMonday(new Date());
     const [viewedMonday, setViewedMonday] = useState(() => getMonday(new Date()));
-    const [weekExpanded, setWeekExpanded] = useState(false); // week button enlarged, arrows shown
-    const [jumpOpen, setJumpOpen] = useState(false); // plus turned into a date input
-    const [jumpDate, setJumpDate] = useState("");
+    const [weekPopupOpen, setWeekPopupOpen] = useState(false);
+    const [jumpOpen, setJumpOpen] = useState(false);
     const weekPickerRef = useRef(null);
 
     const currentDay = dayLabel();
@@ -106,6 +105,16 @@ export default function PlanerPage() {
 
     const shortDate = { day: "2-digit", month: "2-digit" };
     const weekLabel = `${viewedMonday.toLocaleDateString("sr-RS", shortDate)} – ${viewedSunday.toLocaleDateString("sr-RS", shortDate)}`;
+
+    const weeksAway = Math.round(
+        (viewedMonday - thisMonday) / (7 * 24 * 60 * 60 * 1000)
+    );
+    const weekHint =
+        weeksAway === 0 ? "This week"
+        : weeksAway === 1 ? "Next week"
+        : weeksAway === -1 ? "Last week"
+        : weeksAway > 0 ? `In ${weeksAway} weeks`
+        : `${-weeksAway} weeks ago`;
 
     const [tasks, setTasks] = useState([]);
     const [events, setEvents] = useState([]);
@@ -244,9 +253,8 @@ export default function PlanerPage() {
                 weekPickerRef.current &&
                 !weekPickerRef.current.contains(event.target)
             ) {
-                setWeekExpanded(false);
+                setWeekPopupOpen(false);
                 setJumpOpen(false);
-                setJumpDate("");
             }
         }
 
@@ -353,9 +361,7 @@ export default function PlanerPage() {
         setViewedMonday((previous) => addWeeks(previous, step));
     }
 
-    // plus button: pick a date, then confirm with the check button.
-    // (Jumping on every change closed the picker on phones, because phones
-    // fire "change" while you are still scrolling through the dates.)
+    // plus button: pick a date, the planner opens the week that contains it
     function jumpToDate(value) {
         if (!value) {
             return;
@@ -369,8 +375,7 @@ export default function PlanerPage() {
 
         setViewedMonday(getMonday(picked));
         setJumpOpen(false);
-        setJumpDate("");
-        setWeekExpanded(false);
+        setWeekPopupOpen(false);
     }
 
     // Notes work like iPhone Notes: the list shows your notes, tapping one opens it
@@ -817,73 +822,71 @@ async function deleteItems() {
                     </div>
                     <div className="week-controls" ref={weekPickerRef}>
                         <p className="week-paragraph">Week: </p>
-                        {weekExpanded && (
-                            <button
-                                type="button"
-                                className="week-arrow"
-                                aria-label="Previous week"
-                                onClick={() => changeWeek(-1)}
-                            >
-                                ‹
-                            </button>
-                        )}
-
                         <button
-                            className={`week-button ${weekExpanded ? "is-expanded" : ""}`}
+                            className="week-button"
                             type="button"
                             onClick={() => {
-                                setWeekExpanded((open) => !open);
+                                setWeekPopupOpen((open) => !open);
                                 setJumpOpen(false);
-                                setJumpDate("");
                             }}
                         >
                             {weekLabel}
                         </button>
+                        <button
+                            className="plus-button"
+                            type="button"
+                            onClick={() => {
+                                setJumpOpen((open) => !open);
+                                setWeekPopupOpen(false);
+                            }}
+                        >
+                            ＋
+                        </button>
 
-                        {weekExpanded && (
-                            <button
-                                type="button"
-                                className="week-arrow"
-                                aria-label="Next week"
-                                onClick={() => changeWeek(1)}
-                            >
-                                ›
-                            </button>
+                        {weekPopupOpen && (
+                            <div className="week-popup">
+                                <div className="week-popup-row">
+                                    <button
+                                        type="button"
+                                        className="week-arrow"
+                                        onClick={() => changeWeek(-1)}
+                                    >
+                                        ‹
+                                    </button>
+                                    <div className="week-popup-text">
+                                        <strong>{weekLabel}</strong>
+                                        <span>{weekHint}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="week-arrow"
+                                        onClick={() => changeWeek(1)}
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+                                {!isCurrentWeek && (
+                                    <button
+                                        type="button"
+                                        className="week-today"
+                                        onClick={() => setViewedMonday(getMonday(new Date()))}
+                                    >
+                                        Back to this week
+                                    </button>
+                                )}
+                            </div>
                         )}
 
-                        {jumpOpen ? (
-                            <div className="jump-box">
-                                <input
-                                    type="date"
-                                    className="jump-input"
-                                    value={jumpDate}
-                                    onChange={(event) => setJumpDate(event.target.value)}
-                                    onKeyDown={(event) => {
-                                        if (event.key === "Enter") {
-                                            jumpToDate(jumpDate);
-                                        }
-                                    }}
-                                />
-                                <button
-                                    type="button"
-                                    className="jump-go"
-                                    aria-label="Go to this date"
-                                    onClick={() => jumpToDate(jumpDate)}
-                                >
-                                    ✔
-                                </button>
+                        {jumpOpen && (
+                            <div className="week-popup">
+                                <label className="jump-label">
+                                    Go to date
+                                    <input
+                                        type="date"
+                                        onChange={(event) => jumpToDate(event.target.value)}
+                                    />
+                                </label>
                             </div>
-                        ) : (
-                            <button
-                                className="plus-button"
-                                type="button"
-                                onClick={() => {
-                                    setJumpOpen(true);
-                                    setWeekExpanded(false);
-                                }}
-                            >
-                                ＋
-                            </button>
                         )}
                     </div>
                     <button
