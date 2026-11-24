@@ -251,6 +251,7 @@
     .week-paragraph {
         display: none;
     }
+    .week-popup { top: auto; bottom: calc(100% + 8px); }
 
     .week-button {
         min-height: 2.5rem;
