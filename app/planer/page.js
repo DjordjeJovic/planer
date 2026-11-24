@@ -74,34 +74,48 @@ function dayLabel(){
         return `${day}.${month}.`;
     }
 
-function getCurrentWeek() {
-    const today = new Date();
-    const monday = new Date(today);
-    const day = today.getDay();
-    const difference = (day + 6) % 7;
+// "2026-11-24" – the format saved in the week_start column
+function toKey(date) {
+    return date.toLocaleDateString("en-CA");
+}
 
-    monday.setDate(today.getDate() - difference);
-
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-
-    return { monday, sunday };
+function addWeeks(date, count) {
+    const result = new Date(date);
+    result.setDate(result.getDate() + count * 7);
+    return result;
 }
 
 export default function PlanerPage() {
     const supabase = createClient();
-    const currentWeek = getCurrentWeek();
-    const currentDay = dayLabel();
-    const weekLabel =
-        `${currentWeek.monday.toLocaleDateString("sr-RS", {
-            day: "2-digit",
-            month: "2-digit"
-        })} – ${currentWeek.sunday.toLocaleDateString("sr-RS", {
-            day: "2-digit",
-            month: "2-digit"
-        })}`;
 
-    const startOfWeek = getMonday(new Date());
+    // which week is on screen (always a Monday)
+    const thisMonday = getMonday(new Date());
+    const [viewedMonday, setViewedMonday] = useState(() => getMonday(new Date()));
+    const [weekPopupOpen, setWeekPopupOpen] = useState(false);
+    const [jumpOpen, setJumpOpen] = useState(false);
+    const weekPickerRef = useRef(null);
+
+    const currentDay = dayLabel();
+    const startOfWeek = viewedMonday;
+    const weekKey = toKey(viewedMonday);
+    const isCurrentWeek = weekKey === toKey(thisMonday);
+
+    const viewedSunday = new Date(viewedMonday);
+    viewedSunday.setDate(viewedSunday.getDate() + 6);
+
+    const shortDate = { day: "2-digit", month: "2-digit" };
+    const weekLabel = `${viewedMonday.toLocaleDateString("sr-RS", shortDate)} – ${viewedSunday.toLocaleDateString("sr-RS", shortDate)}`;
+
+    const weeksAway = Math.round(
+        (viewedMonday - thisMonday) / (7 * 24 * 60 * 60 * 1000)
+    );
+    const weekHint =
+        weeksAway === 0 ? "This week"
+        : weeksAway === 1 ? "Next week"
+        : weeksAway === -1 ? "Last week"
+        : weeksAway > 0 ? `In ${weeksAway} weeks`
+        : `${-weeksAway} weeks ago`;
+
     const [tasks, setTasks] = useState([]);
     const [events, setEvents] = useState([]);
 
@@ -131,87 +145,126 @@ export default function PlanerPage() {
     const [upcomingOpen, setUpcomingOpen] = useState(false);
     const scrollRef = useRef(null);
 
+    // once: find the user and load the notes
+    useEffect(() => {
+        async function loadUser() {
+            const {
+                data: { user },
+                error: userError,
+            } = await supabase.auth.getUser();
+
+            if (userError || !user) {
+                window.location.href = "/login";
+                return;
+            }
+
+            setUserId(user.id);
+
+            const { data, error: notesError } = await supabase
+                .from("notes")
+                .select("*")
+                .eq("user_id", user.id);
+
+            if (notesError) {
+                console.error("Greška pri učitavanju beleški:", notesError.message);
+                return;
+            }
+
+            setNotes(
+                data.map((note) => ({
+                    id: note.id,
+                    text: note.content,
+                    isNew: false,
+                }))
+            );
+        }
+
+        loadUser();
+    }, []);
+
+    // every time the viewed week changes: load tasks + events
+    useEffect(() => {
+        if (!userId) {
+            return;
+        }
+
+        let cancelled = false;
+
+        async function loadWeek() {
+            const [tasksResult, eventsResult] = await Promise.all([
+                supabase
+                    .from("tasks")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .lte("week_start", weekKey), // repeats from its start week onward
+                supabase
+                    .from("events")
+                    .select("*")
+                    .eq("user_id", userId)
+                    .eq("week_start", weekKey), // only this week
+            ]);
+
+            // an older request finishing late must not overwrite a newer week
+            if (cancelled) {
+                return;
+            }
+
+            if (tasksResult.error || eventsResult.error) {
+                console.error(
+                    "Greška pri učitavanju:",
+                    tasksResult.error || eventsResult.error
+                );
+                setDataLoading(false);
+                return;
+            }
+
+            setTasks(
+                tasksResult.data.map((item) => ({
+                    ...item,
+                    start: item.start_time,
+                    end: item.end_time,
+                    type: "task",
+                }))
+            );
+
+            setEvents(
+                eventsResult.data.map((item) => ({
+                    ...item,
+                    start: item.start_time,
+                    end: item.end_time,
+                    type: "event",
+                }))
+            );
+
+            setDataLoading(false);
+        }
+
+        loadWeek();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [userId, weekKey]);
+
+    // close the week popups when clicking anywhere else
+    useEffect(() => {
+        function handleOutside(event) {
+            if (
+                weekPickerRef.current &&
+                !weekPickerRef.current.contains(event.target)
+            ) {
+                setWeekPopupOpen(false);
+                setJumpOpen(false);
+            }
+        }
+
+        document.addEventListener("pointerdown", handleOutside);
+        return () => document.removeEventListener("pointerdown", handleOutside);
+    }, []);
+
     // On phones, start on today + the next day, near the current hour.
     // Runs on load and again whenever the screen becomes phone-sized
     // (rotating the phone, or switching on DevTools device mode after load).
-    useEffect(() => {
-    async function loadData() {
-        setDataLoading(true);
-
-        const {
-            data: { user },
-            error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError || !user) {
-            window.location.href = "/login";
-            return;
-        }
-
-        setUserId(user.id);
-
-        const weekStart = getMonday(new Date())
-            .toLocaleDateString("en-CA");
-
-        const [tasksResult, eventsResult, notesResult] = await Promise.all([
-            supabase
-                .from("tasks")
-                .select("*")
-                .eq("user_id", user.id)
-                .eq("week_start", weekStart),
-
-            supabase
-                .from("events")
-                .select("*")
-                .eq("user_id", user.id)
-                .eq("week_start", weekStart),
-
-            supabase
-                .from("notes")
-                .select("*")
-                .eq("user_id", user.id),
-        ]);
-
-        if (tasksResult.error || eventsResult.error || notesResult.error) {
-            console.error(
-                "Greška pri učitavanju:",
-                tasksResult.error || eventsResult.error || notesResult.error
-            );
-            setDataLoading(false);
-            return;
-        }
-
-        setTasks(
-            tasksResult.data.map((item) => ({
-                ...item,
-                start: item.start_time,
-                end: item.end_time,
-                type: "task",
-            }))
-        );
-
-        setEvents(
-            eventsResult.data.map((item) => ({
-                ...item,
-                start: item.start_time,
-                end: item.end_time,
-                type: "event",
-            }))
-        );
-
-        setNotes(
-        notesResult.data.map((note) => ({
-            id: note.id,
-            text: note.content,
-            isNew: false,
-        }))
-    );
-
-        setDataLoading(false);
-    }
-
-    loadData();
-}, []);
     useEffect(() => {
         const phone = window.matchMedia("(max-width: 700px)");
 
@@ -302,6 +355,29 @@ export default function PlanerPage() {
         setStartTime("");
         setEndTime("");
     }
+
+    // week navigation: arrows in the popup move one week at a time
+    function changeWeek(step) {
+        setViewedMonday((previous) => addWeeks(previous, step));
+    }
+
+    // plus button: pick a date, the planner opens the week that contains it
+    function jumpToDate(value) {
+        if (!value) {
+            return;
+        }
+
+        const picked = new Date(`${value}T00:00:00`);
+
+        if (isNaN(picked)) {
+            return;
+        }
+
+        setViewedMonday(getMonday(picked));
+        setJumpOpen(false);
+        setWeekPopupOpen(false);
+    }
+
     // Notes work like iPhone Notes: the list shows your notes, tapping one opens it
     // full-page, the check button saves and closes it, the bin deletes it,
     // and an empty note disappears.
@@ -444,6 +520,8 @@ async function saveItem() {
         return;
     }
 
+    // week_start = the week you are looking at.
+    // For a task that is the week it starts repeating from.
     const newItem = {
         user_id: userId,
         name,
@@ -451,7 +529,7 @@ async function saveItem() {
         start_time: startTime,
         end_time: endTime,
         description: "",
-        week_start: getMonday(new Date()).toLocaleDateString("en-CA"),
+        week_start: weekKey,
     };
 
     const table = addingType === "task" ? "tasks" : "events";
@@ -742,13 +820,74 @@ async function deleteItems() {
                         </div>
                     )}
                     </div>
-                    <div className="week-controls">
-                    <p className="week-paragraph">Week: </p>
-                    <button className="week-button">{weekLabel}</button>
-                    <button
-                        className="plus-button">
+                    <div className="week-controls" ref={weekPickerRef}>
+                        <p className="week-paragraph">Week: </p>
+                        <button
+                            className="week-button"
+                            type="button"
+                            onClick={() => {
+                                setWeekPopupOpen((open) => !open);
+                                setJumpOpen(false);
+                            }}
+                        >
+                            {weekLabel}
+                        </button>
+                        <button
+                            className="plus-button"
+                            type="button"
+                            onClick={() => {
+                                setJumpOpen((open) => !open);
+                                setWeekPopupOpen(false);
+                            }}
+                        >
                             ＋
-                    </button>
+                        </button>
+
+                        {weekPopupOpen && (
+                            <div className="week-popup">
+                                <div className="week-popup-row">
+                                    <button
+                                        type="button"
+                                        className="week-arrow"
+                                        onClick={() => changeWeek(-1)}
+                                    >
+                                        ‹
+                                    </button>
+                                    <div className="week-popup-text">
+                                        <strong>{weekLabel}</strong>
+                                        <span>{weekHint}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="week-arrow"
+                                        onClick={() => changeWeek(1)}
+                                    >
+                                        ›
+                                    </button>
+                                </div>
+                                {!isCurrentWeek && (
+                                    <button
+                                        type="button"
+                                        className="week-today"
+                                        onClick={() => setViewedMonday(getMonday(new Date()))}
+                                    >
+                                        Back to this week
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {jumpOpen && (
+                            <div className="week-popup">
+                                <label className="jump-label">
+                                    Go to date
+                                    <input
+                                        type="date"
+                                        onChange={(event) => jumpToDate(event.target.value)}
+                                    />
+                                </label>
+                            </div>
+                        )}
                     </div>
                     <button
                         className="cancel-mode-button"
@@ -817,7 +956,7 @@ async function deleteItems() {
 
                         {days.map((day) => (
                             <div className="day-column" key={day}>
-                                <div className={`day-header ${days.indexOf(day) === getDayOfWeek(new Date()) ? "is-today" : ""}`}>
+                                <div className={`day-header ${isCurrentWeek && days.indexOf(day) === getDayOfWeek(new Date()) ? "is-today" : ""}`}>
                                     <span className="day-date">{
                                     getDateForDay(startOfWeek, days.indexOf(day))}</span>
                                     <span>{day}</span>  
