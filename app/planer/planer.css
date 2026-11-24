@@ -163,7 +163,15 @@ button {
     border-radius: 999px;
     background: var(--surface-2);
 }
-
+.week-arrow {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
 .week-paragraph {
     min-height: 34px;
     width: auto;
