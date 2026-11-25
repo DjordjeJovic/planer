@@ -91,8 +91,9 @@ export default function PlanerPage() {
     // which week is on screen (always a Monday)
     const thisMonday = getMonday(new Date());
     const [viewedMonday, setViewedMonday] = useState(() => getMonday(new Date()));
-    const [weekPopupOpen, setWeekPopupOpen] = useState(false);
-    const [jumpOpen, setJumpOpen] = useState(false);
+    const [weekExpanded, setWeekExpanded] = useState(false); // week button enlarged, arrows shown
+    const [jumpOpen, setJumpOpen] = useState(false); // plus turned into a date input
+    const [jumpDate, setJumpDate] = useState("");
     const weekPickerRef = useRef(null);
 
     const currentDay = dayLabel();
@@ -105,16 +106,6 @@ export default function PlanerPage() {
 
     const shortDate = { day: "2-digit", month: "2-digit" };
     const weekLabel = `${viewedMonday.toLocaleDateString("sr-RS", shortDate)} – ${viewedSunday.toLocaleDateString("sr-RS", shortDate)}`;
-
-    const weeksAway = Math.round(
-        (viewedMonday - thisMonday) / (7 * 24 * 60 * 60 * 1000)
-    );
-    const weekHint =
-        weeksAway === 0 ? "This week"
-        : weeksAway === 1 ? "Next week"
-        : weeksAway === -1 ? "Last week"
-        : weeksAway > 0 ? `In ${weeksAway} weeks`
-        : `${-weeksAway} weeks ago`;
 
     const [tasks, setTasks] = useState([]);
     const [events, setEvents] = useState([]);
@@ -131,6 +122,7 @@ export default function PlanerPage() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [edit, setEdit] = useState("");
     const [editDescription, setEditDescription] = useState("");
+    const [editType, setEditType] = useState("task"); // what the item will be after Save
     const [forDelete, setForDelete] = useState([]);
     const [deleteSelect, setDeleteSelect] = useState(null);
     const [showTransformButton, setShowTransformButton] = useState(false);
@@ -253,8 +245,9 @@ export default function PlanerPage() {
                 weekPickerRef.current &&
                 !weekPickerRef.current.contains(event.target)
             ) {
-                setWeekPopupOpen(false);
+                setWeekExpanded(false);
                 setJumpOpen(false);
+                setJumpDate("");
             }
         }
 
@@ -361,7 +354,9 @@ export default function PlanerPage() {
         setViewedMonday((previous) => addWeeks(previous, step));
     }
 
-    // plus button: pick a date, the planner opens the week that contains it
+    // plus button: pick a date, then confirm with the check button.
+    // (Jumping on every change closed the picker on phones, because phones
+    // fire "change" while you are still scrolling through the dates.)
     function jumpToDate(value) {
         if (!value) {
             return;
@@ -375,7 +370,8 @@ export default function PlanerPage() {
 
         setViewedMonday(getMonday(picked));
         setJumpOpen(false);
-        setWeekPopupOpen(false);
+        setJumpDate("");
+        setWeekExpanded(false);
     }
 
     // Notes work like iPhone Notes: the list shows your notes, tapping one opens it
@@ -589,6 +585,12 @@ async function saveItem() {
     
     
 async function saveEdit() {
+    // the badge was switched: Save moves the item to the other table
+    if (selectedItem !== null && editType !== selectedItem.type) {
+        await convertItem();
+        return;
+    }
+
     if (
         selectedItem === null ||
         !edit.trim() ||
@@ -672,6 +674,83 @@ async function deleteItem() {
 }
 
     
+// Task <-> event lives in two different tables, so "converting" means:
+// 1. insert a copy into the other table (using what is currently in the edit form),
+// 2. delete the original, 3. update the screen.
+async function convertItem() {
+    if (
+        selectedItem === null ||
+        !userId ||
+        !edit.trim() ||
+        minutes(endTime) <= minutes(startTime)
+    ) {
+        return;
+    }
+
+    const toType = editType;
+    const fromTable = selectedItem.type === "task" ? "tasks" : "events";
+    const toTable = toType === "task" ? "tasks" : "events";
+
+    const { data, error } = await supabase
+        .from(toTable)
+        .insert({
+            user_id: userId,
+            name: edit.trim(),
+            day: selectedItem.day,
+            start_time: startTime,
+            end_time: endTime,
+            description: editDescription,
+            // event -> task: the task starts repeating from the event's week
+            // task -> event: the event lands in the week you are looking at
+            week_start: toType === "event" ? weekKey : selectedItem.week_start,
+        })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Greška pri pretvaranju:", error.message);
+        return;
+    }
+
+    const { error: deleteError } = await supabase
+        .from(fromTable)
+        .delete()
+        .eq("id", selectedItem.id)
+        .eq("user_id", userId);
+
+    if (deleteError) {
+        console.error("Greška pri brisanju originala:", deleteError.message);
+        // undo the copy so nothing ends up duplicated
+        await supabase
+            .from(toTable)
+            .delete()
+            .eq("id", data.id)
+            .eq("user_id", userId);
+        return;
+    }
+
+    const converted = {
+        ...data,
+        start: data.start_time,
+        end: data.end_time,
+        type: toType,
+    };
+
+    if (toType === "event") {
+        setTasks((previous) =>
+            previous.filter((item) => item.id !== selectedItem.id)
+        );
+        setEvents((previous) => [...previous, converted]);
+    } else {
+        setEvents((previous) =>
+            previous.filter((item) => item.id !== selectedItem.id)
+        );
+        setTasks((previous) => [...previous, converted]);
+    }
+
+    setSelectedItem(null);
+}
+
 async function deleteItems() {
     const taskIds = tasks
         .filter((item) => forDelete.includes(item.id))
@@ -822,71 +901,73 @@ async function deleteItems() {
                     </div>
                     <div className="week-controls" ref={weekPickerRef}>
                         <p className="week-paragraph">Week: </p>
+                        {weekExpanded && (
+                            <button
+                                type="button"
+                                className="week-arrow"
+                                aria-label="Previous week"
+                                onClick={() => changeWeek(-1)}
+                            >
+                                ‹
+                            </button>
+                        )}
+
                         <button
-                            className="week-button"
+                            className={`week-button ${weekExpanded ? "is-expanded" : ""}`}
                             type="button"
                             onClick={() => {
-                                setWeekPopupOpen((open) => !open);
+                                setWeekExpanded((open) => !open);
                                 setJumpOpen(false);
+                                setJumpDate("");
                             }}
                         >
                             {weekLabel}
                         </button>
-                        <button
-                            className="plus-button"
-                            type="button"
-                            onClick={() => {
-                                setJumpOpen((open) => !open);
-                                setWeekPopupOpen(false);
-                            }}
-                        >
-                            ＋
-                        </button>
 
-                        {weekPopupOpen && (
-                            <div className="week-popup">
-                                <div className="week-popup-row">
-                                    <button
-                                        type="button"
-                                        className="week-arrow"
-                                        onClick={() => changeWeek(-1)}
-                                    >
-                                        ‹
-                                    </button>
-                                    <div className="week-popup-text">
-                                        <strong>{weekLabel}</strong>
-                                        <span>{weekHint}</span>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        className="week-arrow"
-                                        onClick={() => changeWeek(1)}
-                                    >
-                                        ›
-                                    </button>
-                                </div>
-                                {!isCurrentWeek && (
-                                    <button
-                                        type="button"
-                                        className="week-today"
-                                        onClick={() => setViewedMonday(getMonday(new Date()))}
-                                    >
-                                        Back to this week
-                                    </button>
-                                )}
-                            </div>
+                        {weekExpanded && (
+                            <button
+                                type="button"
+                                className="week-arrow"
+                                aria-label="Next week"
+                                onClick={() => changeWeek(1)}
+                            >
+                                ›
+                            </button>
                         )}
 
-                        {jumpOpen && (
-                            <div className="week-popup">
-                                <label className="jump-label">
-                                    Go to date
-                                    <input
-                                        type="date"
-                                        onChange={(event) => jumpToDate(event.target.value)}
-                                    />
-                                </label>
+                        {jumpOpen ? (
+                            <div className="jump-box">
+                                <input
+                                    type="date"
+                                    className="jump-input"
+                                    value={jumpDate}
+                                    onChange={(event) => setJumpDate(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter") {
+                                            jumpToDate(jumpDate);
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    className="jump-go"
+                                    aria-label="Go to this date"
+                                    onClick={() => jumpToDate(jumpDate)}
+                                >
+                                    ✔
+                                </button>
                             </div>
+                        ) : (
+                            <button
+                                className="plus-button"
+                                type="button"
+                                onClick={() => {
+                                    setJumpOpen(true);
+                                    setWeekExpanded(false);
+                                }}
+                            >
+                                ＋
+                            </button>
                         )}
                     </div>
                     <button
@@ -983,6 +1064,7 @@ async function deleteItems() {
                                         .map((item) => (
                                             <button onClick={() => {
                                                 setSelectedItem(item);
+                                                setEditType(item.type);
                                                 setEdit(item.name);
                                                 setStartTime(item.start);
                                                 setEndTime(item.end);
@@ -1227,9 +1309,20 @@ async function deleteItems() {
                                                     )}`
                                                     : selectedItem.day}
                                             </p>
-                                            <span className="edit-badge">
-                                                    {selectedItem.type === "event" ? "Event" : "Task"}
-                                            </span>
+                                            <button
+                                                type="button"
+                                                className={`edit-badge edit-badge-button ${
+                                                    editType !== selectedItem.type ? "is-changed" : ""
+                                                }`}
+                                                title="Click to switch between task and event, then press Save"
+                                                onClick={() =>
+                                                    setEditType((previous) =>
+                                                        previous === "task" ? "event" : "task"
+                                                    )
+                                                }
+                                            >
+                                                {editType === "event" ? "Event" : "Task"} ⇄
+                                            </button>
                                             </div>
                                             <div className="form-row">
                                                 <label className="form-label-edit">
